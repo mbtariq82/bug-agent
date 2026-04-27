@@ -91,3 +91,33 @@ class GitHubClient:
         for issue in self.list_issues(repo, state=state, per_page=per_page, max_pages=max_pages):
             return issue
         return None
+
+    def search_issues(self, repo: str, query: str, per_page: int = 5) -> List[Dict[str, Any]]:
+        """Search issues and pull requests in the repository."""
+
+        owner, name = repo.split("/")
+        q = f"repo:{owner}/{name} {query} in:title,body"
+        url = f"{self.BASE_URL}/search/issues"
+        params = {
+            "q": q,
+            "per_page": per_page,
+        }
+
+        resp = self.session.get(url, params=params, timeout=30)
+        resp.raise_for_status()
+        body = resp.json()
+        return body.get("items", [])
+
+    def list_contributors(self, repo: str, per_page: int = 5) -> List[Dict[str, Any]]:
+        """Get top contributors for the repository."""
+
+        owner, name = repo.split("/")
+        url = f"{self.BASE_URL}/repos/{owner}/{name}/contributors"
+        params = {
+            "per_page": per_page,
+        }
+
+        resp = self.session.get(url, params=params, timeout=30)
+        resp.raise_for_status()
+        return resp.json()
+

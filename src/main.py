@@ -1,15 +1,17 @@
-"""Entry point for the Transformers Bug Agent."""
+"""Entry point for the Bug Agent."""
 
 from __future__ import annotations
 
 import argparse
+import json
 import logging
+import os
 import sys
 from typing import List
 
 from .issue_advisor import IssueAdvisor
 from .github_client import GitHubClient
-from .summarizer import format_issue_text, summarize_issue
+from .summarizer import summarize_issue, format_issue_text
 
 
 LOG = logging.getLogger(__name__)
@@ -17,7 +19,7 @@ LOG = logging.getLogger(__name__)
 
 def parse_args(argv: List[str] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run a lightweight issue advisor for a GitHub repo."
+        description="Run the Bug Agent for a GitHub repo."
     )
     parser.add_argument(
         "--repo",
@@ -36,6 +38,24 @@ def parse_args(argv: List[str] = None) -> argparse.Namespace:
         help="Hugging Face model name for the advisor (overrides MODEL_NAME env var).",
     )
     return parser.parse_args(argv)
+
+
+def store_analysis(repo: str, issue_number: int, title: str, response: str):
+    """Store the analysis in a JSON file for persistent memory."""
+    data_file = "bug_agent_memory.json"
+    data = {}
+    if os.path.exists(data_file):
+        with open(data_file, 'r') as f:
+            data = json.load(f)
+    
+    key = f"{repo}#{issue_number}"
+    data[key] = {
+        "title": title,
+        "response": response,
+    }
+    
+    with open(data_file, 'w') as f:
+        json.dump(data, f, indent=2)
 
 
 def main(argv: List[str] = None) -> int:
@@ -58,14 +78,11 @@ def main(argv: List[str] = None) -> int:
         issue = client.get_latest_issue(args.repo)
 
     if issue is None:
-        LOG.warning(
-            "No issue found to analyze (this can happen if the repo returns only pull requests or has no matching issues)."
-        )
+        LOG.warning("No issue found to analyze.")
         return 0
     
     structured = summarize_issue(issue)
     number = structured.get("number")
-
 
     prompt = format_issue_text(structured)
     if not prompt:
@@ -75,16 +92,14 @@ def main(argv: List[str] = None) -> int:
     try:
         response = advisor.advise(prompt, number)
     except Exception as e:
-        LOG.error("Advisor failed and cannot continue: %s", str(e))
+        LOG.error("Advisor failed: %s", str(e))
         return 1
 
-    # Log a short preview of the response for quick debugging.
-    LOG.info(
-        "#%s %s => %s",
-        number,
-        structured.get("title"),
-        response.replace("\n", " ")[:80],
-    )
+    # Store in persistent memory
+    store_analysis(args.repo, number, structured.get("title"), response)
+
+    # Log and print
+    LOG.info("#%s %s => %s", number, structured.get("title"), response.replace("\n", " ")[:80])
 
     print("---")
     print(f"#{number} {structured.get('title')}")
@@ -94,6 +109,7 @@ def main(argv: List[str] = None) -> int:
     print()
 
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())
