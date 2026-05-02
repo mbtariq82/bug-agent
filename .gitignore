@@ -11,5 +11,8 @@ venv/
 .vscode/
 .idea/
 
+# macOS
+.DS_Store
+
 # Data
 seen_issues.json
