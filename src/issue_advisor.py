@@ -21,16 +21,17 @@ class IssueAdvisor:
 
     def __init__(self, model_name: Optional[str] = None):
         self.model_name = model_name or os.getenv("MODEL_NAME") or self.DEFAULT_MODEL
-        self.use_auth_token = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_HUB_TOKEN")
+        self.hf_token = (
+            os.getenv("HF_TOKEN")
+            or os.getenv("HUGGINGFACE_HUB_TOKEN")
+            or os.getenv("HF_API_KEY")
+        )
 
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.model_name,
-            use_auth_token=self.use_auth_token,
-        )
-        self.model = AutoModelForCausalLM.from_pretrained(
-            self.model_name,
-            use_auth_token=self.use_auth_token,
-        )
+        if self.hf_token and not os.getenv("HUGGINGFACE_HUB_TOKEN"):
+            os.environ["HUGGINGFACE_HUB_TOKEN"] = self.hf_token
+
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        self.model = AutoModelForCausalLM.from_pretrained(self.model_name)
         
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
