@@ -12,7 +12,11 @@ class GitHubClient:
     BASE_URL = "https://api.github.com"
 
     def __init__(self, token: Optional[str] = None):
-        self.token = token or os.getenv("GITHUB_TOKEN")
+        self.token = token or os.getenv("GITHUB_TOKEN") or os.getenv("GITHUB_PAT")
+        if not self.token and os.getenv("GITHUB_PAT"):
+            os.environ["GITHUB_TOKEN"] = os.getenv("GITHUB_PAT")
+            self.token = os.getenv("GITHUB_PAT")
+
         self.session = requests.Session()
         if self.token:
             self.session.headers["Authorization"] = f"token {self.token}"

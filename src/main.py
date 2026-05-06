@@ -7,7 +7,7 @@ import json
 import logging
 import os
 import sys
-from typing import List
+from typing import List, Optional
 
 from .issue_advisor import IssueAdvisor
 from .github_client import GitHubClient
@@ -58,11 +58,38 @@ def store_analysis(repo: str, issue_number: int, title: str, response: str):
         json.dump(data, f, indent=2)
 
 
+def find_dotenv(dotenv_name: str = ".env") -> Optional[str]:
+    """Locate a .env file by searching upward from the current working directory."""
+    current_dir = os.path.abspath(os.getcwd())
+    while True:
+        candidate = os.path.join(current_dir, dotenv_name)
+        if os.path.exists(candidate):
+            return candidate
+        parent_dir = os.path.dirname(current_dir)
+        if parent_dir == current_dir:
+            break
+        current_dir = parent_dir
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    candidate = os.path.join(script_dir, dotenv_name)
+    if os.path.exists(candidate):
+        return candidate
+
+    candidate = os.path.normpath(os.path.join(script_dir, "..", dotenv_name))
+    if os.path.exists(candidate):
+        return candidate
+
+    return None
+
+
 def load_dotenv(dotenv_path: str = ".env") -> None:
     """Load simple KEY=VALUE pairs from a .env file into the environment."""
     if not os.path.exists(dotenv_path):
+        dotenv_path = find_dotenv(dotenv_path)
+    if not dotenv_path or not os.path.exists(dotenv_path):
         return
 
+    LOG.debug("Loading .env from %s", dotenv_path)
     with open(dotenv_path, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
@@ -84,11 +111,14 @@ def main(argv: List[str] = None) -> int:
         level=logging.DEBUG,
     )
 
-    LOG.debug("Environment variables: HF_TOKEN=%s HUGGINGFACE_HUB_TOKEN=%s GITHUB_TOKEN=%s MODEL_NAME=%s",
-              bool(os.getenv("HF_TOKEN")),
-              bool(os.getenv("HUGGINGFACE_HUB_TOKEN")),
-              bool(os.getenv("GITHUB_TOKEN")),
-              os.getenv("MODEL_NAME"),
+    LOG.debug(
+        "Environment variables: HF_TOKEN=%s HF_API_KEY=%s HUGGINGFACE_HUB_TOKEN=%s GITHUB_TOKEN=%s GITHUB_PAT=%s MODEL_NAME=%s",
+        bool(os.getenv("HF_TOKEN")),
+        bool(os.getenv("HF_API_KEY")),
+        bool(os.getenv("HUGGINGFACE_HUB_TOKEN")),
+        bool(os.getenv("GITHUB_TOKEN")),
+        bool(os.getenv("GITHUB_PAT")),
+        os.getenv("MODEL_NAME"),
     )
 
     client = GitHubClient()
