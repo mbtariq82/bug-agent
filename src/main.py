@@ -84,6 +84,13 @@ def main(argv: List[str] = None) -> int:
         level=logging.DEBUG,
     )
 
+    LOG.debug("Environment variables: HF_TOKEN=%s HUGGINGFACE_HUB_TOKEN=%s GITHUB_TOKEN=%s MODEL_NAME=%s",
+              bool(os.getenv("HF_TOKEN")),
+              bool(os.getenv("HUGGINGFACE_HUB_TOKEN")),
+              bool(os.getenv("GITHUB_TOKEN")),
+              os.getenv("MODEL_NAME"),
+    )
+
     client = GitHubClient()
     advisor = IssueAdvisor(model_name=args.model_name)
 
