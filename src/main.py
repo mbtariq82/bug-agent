@@ -102,8 +102,27 @@ def load_dotenv(dotenv_path: str = ".env") -> None:
                 os.environ[key] = value
 
 
+def load_colab_secrets() -> None:
+    """Load secrets from Google Colab's Secrets sidebar into the environment."""
+    try:
+        from google.colab import userdata
+        secret_names = ["HF_TOKEN", "HF_API_KEY", "HUGGINGFACE_HUB_TOKEN", "GITHUB_TOKEN", "GITHUB_PAT"]
+        for secret_name in secret_names:
+            if secret_name not in os.environ:
+                try:
+                    value = userdata.get(secret_name)
+                    if value:
+                        os.environ[secret_name] = value
+                        LOG.debug("Loaded secret %s from Colab", secret_name)
+                except userdata.NotebookAccessError:
+                    pass
+    except ImportError:
+        pass
+
+
 def main(argv: List[str] = None) -> int:
     load_dotenv()
+    load_colab_secrets()
     args = parse_args(argv)
 
     logging.basicConfig(
