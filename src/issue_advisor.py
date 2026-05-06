@@ -30,14 +30,24 @@ class IssueAdvisor:
         if self.hf_token and not os.getenv("HUGGINGFACE_HUB_TOKEN"):
             os.environ["HUGGINGFACE_HUB_TOKEN"] = self.hf_token
 
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-        self.model = AutoModelForCausalLM.from_pretrained(self.model_name)
+        try:
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+            self.model = AutoModelForCausalLM.from_pretrained(self.model_name)
+        except ImportError as e:
+            LOG.error("PyTorch or model loading failed: %s", str(e))
+            LOG.warning("Falling back to a simple advice generator (no ML model)")
+            self.tokenizer = None
+            self.model = None
+            return
         
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
     def advise(self, issue_text: str, issue_number: Optional[int] = None) -> str:
         """Generate advice for the issue."""
+        if self.model is None or self.tokenizer is None:
+            return self._fallback_advice(issue_text, issue_number)
+        
         prompt = f"{self.SYSTEM_PROMPT}\n\nIssue #{issue_number}:\n{issue_text}\n\nAdvice:"
         
         inputs = self.tokenizer(
@@ -64,4 +74,19 @@ class IssueAdvisor:
             response = response.split(prompt, 1)[-1].strip()
         
         return response
+
+    def _fallback_advice(self, issue_text: str, issue_number: Optional[int] = None) -> str:
+        """Generate basic advice without an ML model."""
+        lines = issue_text.split('\n')
+        title = lines[0] if lines else "Unknown issue"
+        
+        advice = f"Issue #{issue_number}: {title}\n\n"
+        advice += "Unable to load ML model (PyTorch not available). Here are basic troubleshooting steps:\n\n"
+        advice += "1. **Check the error logs**: Look for the exact error message and stack trace.\n"
+        advice += "2. **Isolate the problem**: Create a minimal reproduction script that triggers the issue.\n"
+        advice += "3. **Check dependencies**: Verify all package versions are compatible.\n"
+        advice += "4. **Check for known issues**: Search GitHub issues for similar problems.\n"
+        advice += "5. **Provide environment details**: Include OS, Python version, and library versions.\n"
+        
+        return advice
 

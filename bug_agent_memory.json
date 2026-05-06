@@ -1,0 +1,6 @@
+{
+  "huggingface/transformers#45800": {
+    "title": "incompatiblity between torch 2.4.1 and transformers 5.8.0",
+    "response": "Issue #45800: TITLE: incompatiblity between torch 2.4.1 and transformers 5.8.0\n\nUnable to load ML model (PyTorch not available). Here are basic troubleshooting steps:\n\n1. **Check the error logs**: Look for the exact error message and stack trace.\n2. **Isolate the problem**: Create a minimal reproduction script that triggers the issue.\n3. **Check dependencies**: Verify all package versions are compatible.\n4. **Check for known issues**: Search GitHub issues for similar problems.\n5. **Provide environment details**: Include OS, Python version, and library versions.\n"
+  }
+}
