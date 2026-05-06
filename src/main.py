@@ -58,7 +58,25 @@ def store_analysis(repo: str, issue_number: int, title: str, response: str):
         json.dump(data, f, indent=2)
 
 
+def load_dotenv(dotenv_path: str = ".env") -> None:
+    """Load simple KEY=VALUE pairs from a .env file into the environment."""
+    if not os.path.exists(dotenv_path):
+        return
+
+    with open(dotenv_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if key and value and key not in os.environ:
+                os.environ[key] = value
+
+
 def main(argv: List[str] = None) -> int:
+    load_dotenv()
     args = parse_args(argv)
 
     logging.basicConfig(
