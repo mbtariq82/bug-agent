@@ -114,9 +114,9 @@ def load_colab_secrets() -> None:
                     if value:
                         os.environ[secret_name] = value
                         LOG.debug("Loaded secret %s from Colab", secret_name)
-                except userdata.NotebookAccessError:
+                except (userdata.NotebookAccessError, AttributeError):
                     pass
-    except ImportError:
+    except (ImportError, AttributeError):
         pass
 
 

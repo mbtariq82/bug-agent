@@ -16,3 +16,4 @@ venv/
 
 # Data
 seen_issues.json
+bug_agent_memory.json
