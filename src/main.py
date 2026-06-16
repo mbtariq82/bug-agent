@@ -41,6 +41,12 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="Hugging Face model name for the advisor (overrides MODEL_NAME env var).",
     )
     parser.add_argument(
+        "--max-new-tokens",
+        type=int,
+        default=256,
+        help="Maximum number of tokens to generate with the Hugging Face model.",
+    )
+    parser.add_argument(
         "--no-model",
         action="store_true",
         help="Skip loading a Hugging Face model and use deterministic triage.",
@@ -197,7 +203,6 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
 
     client = GitHubClient()
-    advisor = IssueAdvisor(model_name=args.model_name, use_model=not args.no_model)
 
     try:
         issue = None
@@ -214,6 +219,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     if issue is None:
         LOG.warning("No issue found to analyze.")
         return 0
+
+    LOG.info("Fetched issue #%s: %s", issue.get("number"), issue.get("title"))
 
     number = issue.get("number")
     comments = []
@@ -269,7 +276,22 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
 
     try:
+        if args.no_model:
+            LOG.info("Generating deterministic triage (--no-model)")
+        else:
+            model_name = args.model_name or os.getenv("MODEL_NAME") or IssueAdvisor.DEFAULT_MODEL
+            LOG.info(
+                "Loading advisor model %s; use --no-model for a fast deterministic run",
+                model_name,
+            )
+        advisor = IssueAdvisor(
+            model_name=args.model_name,
+            use_model=not args.no_model,
+            max_new_tokens=args.max_new_tokens,
+        )
+        LOG.info("Generating analysis")
         response = advisor.advise(prompt, number)
+        LOG.info("Analysis generated")
     except Exception as e:
         LOG.error("Advisor failed: %s", str(e))
         return 1

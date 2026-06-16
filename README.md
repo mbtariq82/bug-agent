@@ -72,6 +72,12 @@ Run a fast deterministic analysis without loading a Hugging Face model:
 python -m src.main --no-model
 ```
 
+If model-backed analysis is slow on CPU, limit generation length:
+
+```bash
+python -m src.main --max-new-tokens 80
+```
+
 Run the agent for a specific issue number:
 
 ```bash
@@ -109,6 +115,7 @@ python -m unittest discover
 - `--contributors N`: include the top `N` repository contributors.
 - `--repo-context`: include repository metadata such as language and default branch.
 - `--no-model`: skip Hugging Face model loading and use deterministic triage.
+- `--max-new-tokens N`: limit Hugging Face generation length. Lower values return faster.
 - `--memory-file PATH`: write persistent analysis memory to a custom JSON file.
 - `--json`: print the structured issue context and response as JSON.
 - `--verbose`: enable debug logging.

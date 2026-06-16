@@ -22,9 +22,15 @@ class IssueAdvisor:
         "steps, related-issue clues, and concrete next actions."
     )
 
-    def __init__(self, model_name: Optional[str] = None, use_model: bool = True):
+    def __init__(
+        self,
+        model_name: Optional[str] = None,
+        use_model: bool = True,
+        max_new_tokens: int = 256,
+    ):
         self.model_name = model_name or os.getenv("MODEL_NAME") or self.DEFAULT_MODEL
         self.use_model = use_model
+        self.max_new_tokens = max_new_tokens
         self.hf_token = (
             os.getenv("HF_TOKEN")
             or os.getenv("HUGGINGFACE_HUB_TOKEN")
@@ -75,7 +81,7 @@ class IssueAdvisor:
         outputs = self.model.generate(
             inputs["input_ids"],
             attention_mask=inputs.get("attention_mask"),
-            max_new_tokens=256,
+            max_new_tokens=self.max_new_tokens,
             pad_token_id=self.tokenizer.pad_token_id,
             eos_token_id=self.tokenizer.eos_token_id,
             do_sample=True,
