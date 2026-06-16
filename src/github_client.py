@@ -6,6 +6,15 @@ from typing import Any, Dict, Iterable, List, Optional
 import requests
 
 
+def split_repo(repo: str) -> tuple[str, str]:
+    """Return owner/name parts for a GitHub repository slug."""
+
+    parts = repo.strip().split("/")
+    if len(parts) != 2 or not all(parts):
+        raise ValueError(f"Repository must be in 'owner/name' format, got: {repo!r}")
+    return parts[0], parts[1]
+
+
 class GitHubClient:
     """Simple GitHub Issues client using the public REST API."""
 
@@ -42,7 +51,7 @@ class GitHubClient:
             direction: Sort direction (asc or desc).
         """
 
-        owner, name = repo.split("/")
+        owner, name = split_repo(repo)
         url = f"{self.BASE_URL}/repos/{owner}/{name}/issues"
         params = {
             "state": state,
@@ -76,11 +85,42 @@ class GitHubClient:
     def get_issue(self, repo: str, issue_number: int) -> Dict[str, Any]:
         """Get a single issue by number."""
 
-        owner, name = repo.split("/")
+        owner, name = split_repo(repo)
         url = f"{self.BASE_URL}/repos/{owner}/{name}/issues/{issue_number}"
         resp = self.session.get(url, timeout=30)
         resp.raise_for_status()
         return resp.json()
+
+    def get_issue_comments(
+        self,
+        repo: str,
+        issue_number: int,
+        per_page: int = 30,
+        max_pages: int = 1,
+    ) -> List[Dict[str, Any]]:
+        """Return comments for a single issue."""
+
+        owner, name = split_repo(repo)
+        url = f"{self.BASE_URL}/repos/{owner}/{name}/issues/{issue_number}/comments"
+        params = {"per_page": per_page, "page": 1}
+        comments: List[Dict[str, Any]] = []
+
+        page = 0
+        while True:
+            if max_pages is not None and page >= max_pages:
+                break
+
+            resp = self.session.get(url, params=params, timeout=30)
+            resp.raise_for_status()
+            body = resp.json()
+            if not body:
+                break
+
+            comments.extend(body)
+            page += 1
+            params["page"] += 1
+
+        return comments
 
     def get_latest_issue(
         self, repo: str, state: str = "open", per_page: int = 10, max_pages: int = 3
@@ -96,11 +136,18 @@ class GitHubClient:
             return issue
         return None
 
-    def search_issues(self, repo: str, query: str, per_page: int = 5) -> List[Dict[str, Any]]:
-        """Search issues and pull requests in the repository."""
+    def search_issues(
+        self,
+        repo: str,
+        query: str,
+        per_page: int = 5,
+        include_pull_requests: bool = False,
+    ) -> List[Dict[str, Any]]:
+        """Search issues in the repository."""
 
-        owner, name = repo.split("/")
-        q = f"repo:{owner}/{name} {query} in:title,body"
+        owner, name = split_repo(repo)
+        issue_filter = "" if include_pull_requests else " is:issue"
+        q = f"repo:{owner}/{name}{issue_filter} {query} in:title,body"
         url = f"{self.BASE_URL}/search/issues"
         params = {
             "q": q,
@@ -110,18 +157,30 @@ class GitHubClient:
         resp = self.session.get(url, params=params, timeout=30)
         resp.raise_for_status()
         body = resp.json()
-        return body.get("items", [])
+        items = body.get("items", [])
+        if include_pull_requests:
+            return items
+        return [item for item in items if "pull_request" not in item]
 
     def list_contributors(self, repo: str, per_page: int = 5) -> List[Dict[str, Any]]:
         """Get top contributors for the repository."""
 
-        owner, name = repo.split("/")
+        owner, name = split_repo(repo)
         url = f"{self.BASE_URL}/repos/{owner}/{name}/contributors"
         params = {
             "per_page": per_page,
         }
 
         resp = self.session.get(url, params=params, timeout=30)
+        resp.raise_for_status()
+        return resp.json()
+
+    def get_repo_info(self, repo: str) -> Dict[str, Any]:
+        """Return repository metadata useful for issue triage."""
+
+        owner, name = split_repo(repo)
+        url = f"{self.BASE_URL}/repos/{owner}/{name}"
+        resp = self.session.get(url, timeout=30)
         resp.raise_for_status()
         return resp.json()
 
