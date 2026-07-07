@@ -123,11 +123,3 @@ python -m unittest discover
 ## Output
 
 The agent prints the selected issue URL and analysis response, and stores the structured issue context plus response in `bug_agent_memory.json`.
-
-## Notes
-
-- The repository currently does not include SurrealDB or any external persistent database integration.
-- If `GITHUB_TOKEN` or `GITHUB_PAT` is set, the GitHub client will authenticate requests with it.
-- If `HF_TOKEN`, `HUGGINGFACE_HUB_TOKEN`, or `HF_API_KEY` is set, the Hugging Face model download will use authenticated requests and higher rate limits.
-- A `.env` file in the repo root is automatically loaded by `src/main.py` when the agent starts.
-- The default model is `HuggingFaceTB/SmolLM-1.7B`, but you can override it with `MODEL_NAME` or `--model`.
